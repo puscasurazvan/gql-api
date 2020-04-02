@@ -1,6 +1,10 @@
 const { ApolloServer, gql } = require("apollo-server")
+const { GraphQLScalarType } = require("graphql")
+const { Kind } = require("graphql/language")
 
 const typeDefs = gql`
+  scalar Date
+
   enum Status {
     WATCHED
     INTERESTED
@@ -13,36 +17,68 @@ const typeDefs = gql`
     name: String!
   }
 
+  input ActorInput {
+    id: ID
+  }
+
   type Movie {
     id: ID!
     title: String!
-    releaseDate: String
+    releaseDate: Date
     rating: Int
     status: Status
     actor: [Actor]
+  }
+
+  input MovieInput {
+    id: ID
+    title: String
+    releaseDate: Date
+    rating: Int
+    status: Status
+    actor: [ActorInput]
   }
 
   type Query {
     movies: [Movie]
     movie(id: ID): Movie
   }
+
+  type Mutation {
+    addMovie(movie: MovieInput): [Movie]
+  }
 `
+
+const actors = [
+  {
+    id: "corona",
+    name: "Corona Virus",
+  },
+  {
+    id: "Gigel",
+    name: "Gigel Virus",
+  },
+]
 
 const movies = [
   {
     id: "asdfasddfd",
-    title: "GTA VI",
-    releaseDate: "10-10-2060",
+    title: "Pandemic VI",
+    releaseDate: new Date("10-10-2060"),
+    actor: [
+      {
+        id: "Gigel",
+      },
+    ],
   },
   {
     id: "asdfasddfddddd",
-    title: "GTA VII",
-    releaseDate: "10-10-2020",
+    title: "Pandemic VII",
+    releaseDate: new Date("10-10-2020"),
     rating: 5,
     actor: [
       {
-        id: "asdfasdf",
-        name: "Gordon Liu",
+        id: "corona",
       },
     ],
   },
@@ -61,6 +97,44 @@ const resolvers = {
       return foundMovie
     },
   },
+  Movie: {
+    actor: (obj, arg, context) => {
+      const actorIds = obj.actor.map(actor => actor.id)
+      const filteredActors = actors.filter(actor => {
+        return actorIds.includes(actor.id)
+      })
+      return actors
+    },
+  },
+  Mutation: {
+    addMovie: (obj, { movie }, context) => {
+      const newMoviesList = [
+        ...movies,
+        // new movie data
+        movie,
+      ]
+      // Return data as expected in schema
+      return newMoviesList
+    },
+  },
+  Date: new GraphQLScalarType({
+    name: "Date",
+    description: "It's a date",
+    parseValue(value) {
+      // value from the client
+      return new Date(value)
+    },
+    serialize(value) {
+      // value sent to the client
+      return value.getTime()
+    },
+    parseLiteral(ast) {
+      if (ast.kind === Kind.INT) {
+        return new Date(ast.value)
+      }
+      return null
+    },
+  }),
 }
 
 const server = new ApolloServer({
