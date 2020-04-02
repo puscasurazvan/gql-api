@@ -3,6 +3,11 @@ const { GraphQLScalarType } = require("graphql")
 const { Kind } = require("graphql/language")
 
 const typeDefs = gql`
+  fragment Meta on Movie {
+    releaseDate
+    rating
+  }
+
   scalar Date
 
   enum Status {
@@ -142,6 +147,14 @@ const server = new ApolloServer({
   resolvers,
   introspection: true,
   playground: true,
+  context: ({ req }) => {
+    const fakeUser = {
+      userId: "helloImaUser",
+    }
+    return {
+      ...fakeUser,
+    }
+  },
 })
 
 server
